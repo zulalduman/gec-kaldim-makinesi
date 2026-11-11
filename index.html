@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geç Kaldım Makinesi ⏰</title>
+<style>
+:root{
+  --bg1:#ffe9d6; --bg2:#ffd1e3; --bg3:#d9e7ff;
+  --card:rgba(255,255,255,.78); --ink:#2b2140; --muted:#7a6f90;
+  --pri:#7c3aed; --pri2:#ec4899; --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444;
+  --chip:#fff; --shadow:0 20px 50px rgba(124,58,237,.18);
+}
+body.dark{
+  --bg1:#1a1030; --bg2:#2a1245; --bg3:#0f1f45;
+  --card:rgba(30,22,52,.8); --ink:#f3ecff; --muted:#a99cc7; --chip:#2b2147;
+  --shadow:0 20px 50px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif; color:var(--ink);
+  background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3)); background-size:300% 300%;
+  animation:bg 18s ease infinite; transition:color .3s; overflow-x:hidden;
+}
+@keyframes bg{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.float{position:fixed; font-size:2rem; opacity:.25; pointer-events:none; animation:fl 14s linear infinite}
+@keyframes fl{from{transform:translateY(105vh) rotate(0)}to{transform:translateY(-15vh) rotate(360deg)}}
+main{max-width:760px; margin:0 auto; padding:28px 18px 60px; position:relative; z-index:2}
+header{text-align:center; margin-bottom:22px}
+.clock{font-size:4rem; display:inline-block; animation:wob 2.5s ease-in-out infinite; transform-origin:50% 90%}
+@keyframes wob{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
+h1{margin:4px 0 6px; font-size:clamp(1.8rem,5vw,2.7rem); letter-spacing:-.5px;
+  background:linear-gradient(90deg,var(--pri),var(--pri2)); -webkit-background-clip:text; background-clip:text; color:transparent}
+header p{margin:0; color:var(--muted)}
+.card{background:var(--card); backdrop-filter:blur(14px); border-radius:24px; padding:22px; box-shadow:var(--shadow); margin-bottom:18px; border:1px solid rgba(255,255,255,.4)}
+.card h2{margin:0 0 12px; font-size:.85rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted)}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{border:2px solid transparent; background:var(--chip); color:var(--ink); padding:9px 14px; border-radius:999px; cursor:pointer; font-size:.95rem; font-family:inherit; transition:.2s; box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.chip:hover{transform:translateY(-2px) scale(1.04)}
+.chip.on{border-color:var(--pri); background:linear-gradient(135deg,var(--pri),var(--pri2)); color:#fff; font-weight:600}
+.row{margin-bottom:18px}.row:last-child{margin-bottom:0}
+.slider-wrap{display:flex; align-items:center; gap:14px}
+input[type=range]{flex:1; accent-color:var(--pri); height:6px}
+.minutes{min-width:110px; white-space:nowrap; text-align:right; font-weight:700; font-size:1.15rem; color:var(--pri)}
+.go{width:100%; border:none; cursor:pointer; padding:18px; font-size:1.25rem; font-weight:800; color:#fff; border-radius:20px; font-family:inherit;
+  background:linear-gradient(135deg,var(--pri),var(--pri2)); box-shadow:0 10px 25px rgba(236,72,153,.4); transition:.2s; margin-bottom:18px}
+.go:hover{transform:translateY(-3px) scale(1.01)} .go:active{transform:scale(.97)}
+.result{min-height:190px; position:relative}
+.bubble{font-size:1.3rem; line-height:1.55; font-weight:500; min-height:100px; white-space:pre-wrap}
+.bubble.spin{opacity:.55; filter:blur(1.2px); font-style:italic}
+.bubble.pop{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.92); opacity:0}to{transform:scale(1); opacity:1}}
+.cursor::after{content:"▌"; animation:blink .7s steps(2) infinite; color:var(--pri)}
+@keyframes blink{50%{opacity:0}}
+.meter{margin-top:14px}
+.meter-top{display:flex; justify-content:space-between; font-size:.9rem; color:var(--muted); margin-bottom:6px}
+.bar{height:14px; background:rgba(124,58,237,.15); border-radius:99px; overflow:hidden}
+.fill{height:100%; width:0; border-radius:99px; transition:width 1s cubic-bezier(.2,1,.3,1), background .5s}
+.verdict{margin-top:8px; font-weight:700}
+.actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px}
+.btn{border:none; background:var(--chip); color:var(--ink); padding:10px 14px; border-radius:12px; cursor:pointer; font-family:inherit; font-size:.92rem; box-shadow:0 2px 8px rgba(0,0,0,.08); transition:.15s}
+.btn:hover{transform:translateY(-2px)} .btn.fav.on{background:#ffe0ec; color:#d6246e}
+body.dark .btn.fav.on{background:#5a1a3a; color:#ff9ac4}
+.list{display:flex; flex-direction:column; gap:10px}
+.item{background:var(--chip); border-radius:14px; padding:12px 14px; font-size:.95rem; display:flex; gap:10px; align-items:flex-start; animation:pop .3s}
+.item span.t{flex:1; cursor:pointer}
+.item button{border:none; background:none; cursor:pointer; font-size:1.1rem}
+.empty{color:var(--muted); font-style:italic; font-size:.92rem}
+.tabs{display:flex; gap:8px; margin-bottom:12px}
+.stats{text-align:center; color:var(--muted); font-size:.85rem; margin-top:8px}
+.theme{position:fixed; top:14px; right:14px; z-index:5; border:none; background:var(--card); width:44px; height:44px; border-radius:50%; font-size:1.3rem; cursor:pointer; box-shadow:var(--shadow)}
+.toast{position:fixed; bottom:26px; left:50%; transform:translate(-50%,100px); background:var(--ink); color:var(--bg1); padding:12px 20px; border-radius:99px; transition:.35s; z-index:20; font-weight:600}
+.toast.show{transform:translate(-50%,0)}
+canvas{position:fixed; inset:0; pointer-events:none; z-index:15}
+footer{text-align:center; color:var(--muted); font-size:.8rem; margin-top:20px}
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px}
+.field span{display:block; font-size:.85rem; color:var(--muted); margin-bottom:6px; font-weight:700}
+select{width:100%; padding:13px 14px; border-radius:14px; border:2px solid var(--pri); background:var(--chip); color:var(--ink); font-size:1rem; font-family:inherit; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.06)}
+select:focus{outline:3px solid rgba(124,58,237,.3)}
+</style>
+</head>
+<body>
+<button class="theme" id="lang" style="right:66px;font-size:.9rem;font-weight:700" title="English">EN</button>
+<button class="theme" id="theme" title="Tema">🌙</button>
+<canvas id="confetti"></canvas>
+<main>
+  <header>
+    <div class="clock">⏰</div>
+    <h1 data-i18n="title">Geç Kaldım Makinesi</h1>
+    <p data-i18n="sub">Yüzde yüz uydurma, yüzde yüz eğlence. Kimseye ciddiye aldırmayın. 😄</p>
+  </header>
+
+  <section class="card">
+    <div class="grid">
+      <label class="field"><span data-i18n="lblPerson">👤 Kime anlatacaksın?</span><select id="person"></select></label>
+      <label class="field"><span data-i18n="lblStyle">🎯 Bahane tarzı</span><select id="style"></select></label>
+      <label class="field"><span data-i18n="lblVeh">🚦 Ne ile geliyorsun?</span><select id="vehicle"></select></label>
+      <label class="field"><span data-i18n="lblMin">⏱️ Ne kadar geç kaldın?</span><select id="min"></select></label>
+    </div>
+  </section>
+
+  <button class="go" id="go" data-i18n="go">🎲 Bahane Üret <small style="font-weight:400;opacity:.8">(Boşluk tuşu)</small></button>
+
+  <section class="card result">
+    <h2 data-i18n="resultH">Bahanen</h2>
+    <div class="bubble" id="bubble">Yukarıdan ayarlarını seç ve butona bas. Mükemmel bahane seni bekliyor…</div>
+    <div class="meter" id="meter" hidden>
+      <div class="meter-top"><span data-i18n="meter">İnandırıcılık</span><span id="pct">0%</span></div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+    <div class="actions" id="actions" hidden>
+      <button class="btn" id="copy" data-i18n="copy">📋 Kopyala</button>
+      <button class="btn fav" id="fav">🤍 Favorile</button>
+      <button class="btn" id="share" data-i18n="share">📤 Paylaş</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="tabs">
+      <button class="chip on" data-tab="history" data-i18n="tabHist">🕘 Geçmiş</button>
+      <button class="chip" data-tab="favs" data-i18n="tabFav">💖 Favoriler</button>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <div class="stats" id="stats"></div>
+  <footer data-i18n="footer">Bu site tamamen şaka amaçlıdır. Gerçek hayatta dürüst olmak en iyisi (ama bazen de bu iş görür 😉).</footer>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+const PERSONS = {
+  patron:{label:"👔 Patron / Yönetici (resmi)", hi:["Günaydın,","Merhaba,","Selamlar,"],
+    bye:["Gün içinde telafi edeceğim.","Toplantı notlarını bana iletebilirseniz sevinirim.","Anlayışınız için teşekkür ederim."]},
+  ekip:{label:"💼 Ekip arkadaşı", hi:["Arkadaşlar selam,","Merhaba,","Selam,"],
+    bye:["Başlayın, birazdan katılırım.","Önemli bir şey olursa bana yazın.","Not alanı bana bırakın, hallederim."]},
+  musteri:{label:"🤝 Müşteri / Dış toplantı", hi:["Merhabalar,","İyi günler,","Selamlar,"],
+    bye:["Anlayışınız için teşekkür ederim.","Gecikme için özür dilerim.","Görüşmeye en kısa sürede katılacağım."]},
+  hoca:{label:"🎓 Hoca", hi:["Hocam merhaba,","Hocam kusura bakmayın,","Sayın hocam,"],
+    bye:["Dersin başını kaçırdığım için üzgünüm.","Kaçırdığım kısmı mutlaka tamamlayacağım.","Gelmeden önce haber vermek istedim."]},
+  arkadas:{label:"🧑‍🤝‍🧑 Arkadaş (samimi)", hi:["Selam,","Kanka,","Dostum,"],
+    bye:["Başlayın, ben de geliyorum!","İlk çay benden.","Beni beklemeyin, yoldayım."]},
+  sevgili:{label:"💘 Sevgili", hi:["Canım,","Hayatım,","Bir tanem,"],
+    bye:["Kusura bakma, gelince anlatırım.","Telafisi güzel bir akşam yemeği olsun.","Gelirken bir şey lazım mı?"]},
+  aile:{label:"🏠 Aile", hi:["Anneciğim,","Babacığım,","Canlarım,"],
+    bye:["Merak etmeyin, geliyorum.","Yemeği benim için ayırın.","Çıkınca tekrar yazarım."]}
+};
+
+// [bahane, en az dakika, en çok dakika]
+const CAT = {
+  ulasim:[
+    ["otobüs duraktan bir türlü gelmedi, bir sonraki seferi beklemek zorunda kaldım",5,45],
+    ["metro seferleri aksadı, istasyonda büyük bir yoğunluk vardı",5,45],
+    ["metrobüste arıza oldu ve bir süre yolda kaldık",10,90],
+    ["yoldaki kaza yüzünden trafik neredeyse durdu",10,120],
+    ["köprü girişinde beklenmedik bir yoğunluk vardı",5,40],
+    ["vapur seferi iptal oldu, bir sonrakini beklemek zorunda kaldım",20,120],
+    ["yağmur yüzünden taksi ve dolmuş bulmak çok zor oldu",10,60],
+    ["yanlış otobüse binmişim, birkaç durak sonra fark ettim",10,45],
+    ["yol çalışması nedeniyle güzergah kapalıydı, uzun yoldan dolaşmak zorunda kaldım",15,90],
+    ["arabanın lastiği patladı, yedek lastiğe geçmem gerekti",30,120],
+    ["otopark doluydu, yer bulmam çok uzun sürdü",5,30],
+    ["yakıt ışığı yandı, benzinliğe uğramak zorunda kaldım",5,25]],
+  ev:[
+    ["telefonumun alarmı sessizde kalmış, geç uyandım",10,60],
+    ["tam çıkarken kargocu kapıya geldi, teslimat uzadı",5,20],
+    ["evden çıkıp anahtarımı unuttuğumu fark ettim, geri dönmek zorunda kaldım",5,25],
+    ["asansör arızalandı, merdivenle inmek zorunda kaldım",5,15],
+    ["kombi arıza verdi, tamirciyi beklemem gerekti",30,120],
+    ["su kesintisi yüzünden hazırlanmam gecikti",15,60],
+    ["elektrikler gitti, hazırlanırken zorlandım",10,45],
+    ["kapı kilidi sıkıştı, çilingiri aramak zorunda kaldım",20,90],
+    ["çamaşır makinesi taştı, önce onu toparlamam gerekti",15,60],
+    ["komşu acil bir konu için yardım istedi, ilgilenmem gerekti",5,25],
+    ["üstüme kahve döküldü, kıyafetimi değiştirmem gerekti",5,25]],
+  saglik:[
+    ["çocuğun okul servisi gelmedi, onu okula bırakmam gerekti",15,60],
+    ["annem aradı, acil bir konuda yardım etmem gerekti",5,45],
+    ["bir yakınım rahatsızlandı, ilgilenmem gerekti",30,180],
+    ["başım çok ağrıdı, ilaç alıp biraz dinlenmem gerekti",10,45],
+    ["sabah midem bozuldu, çıkmadan önce toparlanmam gerekti",10,45],
+    ["evcil hayvanımı acil veterinere yetiştirmem gerekti",30,120],
+    ["diş ağrım yüzünden acil bir muayeneye uğradım",30,120],
+    ["doktor randevum uzadı, çıkış saatim kaydı",20,90]],
+  teknoloji:[
+    ["telefon güncelleme ekranında takıldı, açılması uzun sürdü",5,30],
+    ["navigasyon beni yanlış adrese yönlendirdi",10,45],
+    ["bir önceki online toplantı uzadı, çıkamadım",5,40],
+    ["bilgisayar tam çıkarken güncelleme yapmaya başladı, işimi kaydedemedim",5,30],
+    ["telefonum şarjsız kaldı, şarj etmek için geri dönmek zorunda kaldım",10,40],
+    ["toplu taşıma kartım çalışmadı, bakiye yüklemem gerekti",5,20],
+    ["internet kesildi, sunumu son anda indirmem gerekti",10,45],
+    ["VPN bağlanmadı, ofis sistemine girmem uzun sürdü",10,60]],
+  eglenceli:[
+    ["kedim kapının önüne yattı, onu rahatsız etmeye kıyamadım",5,30],
+    ["yolda bir martı simidimi kaptı, adalet için peşinden koştum",5,30],
+    ["ayakkabılarım birbirine küstü, arabuluculuk yapmam gerekti",5,25],
+    ["çorabımın teki kaybolmuştu, bulmadan çıkamazdım",5,20],
+    ["sokakta bir güvercin bana yol sordu, tarif etmem on dakikamı aldı",5,25],
+    ["yanlış çorapla çıktığımı fark edip geri döndüm, hayatımın en uzun dönüşüydü",5,25],
+    ["yolda tanıdık bir köpekle karşılaştım, selamlaşma uzadı",5,25],
+    ["kahve makinesi 'Hata 404: kahve bulunamadı' verdi, kahvesiz yola çıkmak olmazdı",5,30],
+    ["akıllı saatim 'bugün dinlen' deyip beni kapıdan çıkarmadı",5,30],
+    ["dolabın önünde 'bugün ne giymeliyim' krizine girdim",10,45],
+    ["komşunun papağanı beni toplantıya çağırdı, gündem uzadı",10,45],
+    ["navigasyon beni 2014'teki eski evime yönlendirdi",15,60],
+    ["ışınlanma cihazım 'Wi-Fi zayıf' dedi",10,60],
+    ["robot süpürgem bilinç kazandı ve çıkışı kapattı",15,90],
+    ["zaman çizgisinde ufak bir kayma oldu, 17 dakika başka bir evrende kaldım",15,120],
+    ["bir zaman yolcusu bana 'şimdi çıkma' dedi, dinledim",15,120]]
+};
+const STYLES = {
+  karisik:{label:"🎲 Karışık", base:88, causes:[].concat(CAT.ulasim,CAT.ev,CAT.saglik,CAT.teknoloji)},
+  ulasim:{label:"🚌 Ulaşım / Trafik", base:94, causes:CAT.ulasim},
+  ev:{label:"🏠 Ev / Günlük hayat", base:90, causes:CAT.ev},
+  saglik:{label:"🩺 Sağlık / Aile", base:84, causes:CAT.saglik},
+  teknoloji:{label:"📱 Teknoloji", base:87, causes:CAT.teknoloji},
+  eglenceli:{label:"🤪 Eğlenceli", base:55, causes:CAT.eglenceli}
+};
+const EFFECTS=["Şu an yoldayım.","Elimden geleni yapıyorum, en kısa sürede oradayım.","Durumu takip ediyorum, güncelleme vereceğim.","Mümkünse beni beklemeden başlayın."];
+const CASUAL = {
+  hi:["Selam,","Kanka,","Ya,","Naber,"],
+  bye:["Başlayın, ben de geliyorum!","İlk çay benden, söz.","Kusura bakma ya, yoldayım.","Bana bir yer ayırın, geliyorum 😅"],
+  effects:["Şu an yoldayım, geliyorum!","Elimden geleni yapıyorum, az kaldı.","Siz başlayın, ben yetişirim.","Beni beklemeyin ya, hemen geliyorum."],
+  open:[
+    [10,["Ya {n} dk geç kalıyorum, çünkü","{n} dakika gecikeceğim abi, çünkü","Çok değil, {n} dk geç kalacağım, çünkü"]],
+    [30,["Ya {n} dakika gecikeceğim, çünkü","Valla {n} dk geç kalacağım, çünkü","Ufak bir sorun çıktı, {n} dk gecikeceğim, çünkü"]],
+    [60,["Ya çok kötü oldu ama {n} dakika geç kalacağım, çünkü","Off, {n} dk gecikeceğim ya, çünkü","Kusura bakma, {n} dk geç kalıyorum, çünkü"]],
+    [999,["Ya rezalet, {n} dakika geç kalacağım, çünkü","Valla bu sefer {n} dk gecikeceğim, çünkü","Çok üzgünüm ya, {n} dakikalık bir gecikme var, çünkü"]]
+  ],
+  words:[
+    [" zorunda kaldım"," mecbur kaldım"],
+    [" gerekti"," lazım oldu"],
+    ["neredeyse durdu","resmen durdu"],
+    ["beklenmedik bir yoğunluk","aşırı bir yoğunluk"],
+    ["büyük bir yoğunluk","inanılmaz bir kalabalık"],
+    ["çok uzun sürdü","bayağı uzun sürdü"],
+    ["uzun sürdü","bayağı uzun sürdü"],
+    ["arıza verdi","bozuldu"],
+    ["arızalandı","bozuldu"],
+    ["rahatsızlandı","hastalandı"],
+    ["çok zor oldu","çok zor oldu ya"]
+  ]
+};
+const VEH = {
+  metrobus:{label:"🚍 Metrobüs", now:"Şu an metrobüsteyim.", causes:[
+    ["metrobüste arıza oldu ve bir süre yolda kaldık",10,90],
+    ["metrobüs durağındaki kuyruk çok uzundu, ilk iki metrobüse binemedim",5,45],
+    ["metrobüs yolunda bir araç bozulunca hat tıkandı",10,60],
+    ["metrobüs seferleri aksadı, durakta büyük bir yoğunluk vardı",5,45],
+    ["yanlış yöne giden metrobüse binmişim, birkaç durak sonra fark ettim",10,40],
+    ["metrobüs hattında kaza oldu, seferler bir süre durdu",20,120]]},
+  taksi:{label:"🚕 Taksi", now:"Şu an taksideyim.", causes:[
+    ["taksi çağırdım ama bir türlü gelmedi, iptal edip yenisini çağırdım",10,45],
+    ["taksi şoförü yanlış yola saptı, geri dönmek zorunda kaldık",10,45],
+    ["yağmur yüzünden boş taksi bulmak çok zor oldu",10,60],
+    ["taksi trafikte uzun süre sıkıştı",10,90],
+    ["taksinin kart cihazı çalışmadı, nakit çekmek için durmamız gerekti",5,25],
+    ["çağırdığım taksi yanlış adrese gitmiş, onu bulmam zaman aldı",10,40]]},
+  araba:{label:"🚗 Araba", now:"Şu an arabadayım.", causes:[
+    ["yoldaki kaza yüzünden trafik neredeyse durdu",10,120],
+    ["arabanın lastiği patladı, yedek lastiğe geçmem gerekti",30,120],
+    ["otopark doluydu, yer bulmam çok uzun sürdü",5,30],
+    ["yakıt ışığı yandı, benzinliğe uğramak zorunda kaldım",5,25],
+    ["arabam ilk seferde çalışmadı, akü zayıfmış",10,60],
+    ["köprü girişinde beklenmedik bir yoğunluk vardı",5,40],
+    ["yol çalışması nedeniyle güzergah kapalıydı, uzun yoldan dolaşmak zorunda kaldım",15,90],
+    ["arabanın camları buğulanmıştı, temizlemem uzun sürdü",5,20]]},
+  otobus:{label:"🚌 Otobüs", now:"Şu an otobüsteyim.", causes:[
+    ["otobüs duraktan bir türlü gelmedi, bir sonraki seferi beklemek zorunda kaldım",5,45],
+    ["otobüs yolda arıza yaptı, bir başkasını beklememiz gerekti",15,90],
+    ["otobüs çok doluydu, ilk seferi kaçırdım",5,30],
+    ["yanlış otobüse binmişim, birkaç durak sonra fark ettim",10,45],
+    ["yoğun trafik yüzünden otobüs duraklarda çok bekledi",10,60]]},
+  metro:{label:"🚇 Metro", now:"Şu an metrodayım.", causes:[
+    ["metro seferleri aksadı, istasyonda büyük bir yoğunluk vardı",5,45],
+    ["istasyonda teknik arıza anonsu yapıldı, seferler bir süre durdu",10,60],
+    ["aktarma yaparken yanlış hatta binmişim",5,30],
+    ["metro tünelde bir süre bekledi",5,30],
+    ["istasyonda turnikeler çalışmadı, uzun kuyruk oluştu",5,25]]},
+  vapur:{label:"⛴️ Vapur", now:"Şu an vapurdayım.", causes:[
+    ["vapur seferi iptal oldu, bir sonrakini beklemek zorunda kaldım",20,120],
+    ["yoğun sis yüzünden seferler gecikti",20,120],
+    ["iskelede çok kalabalık vardı, ilk vapura binemedim",10,40],
+    ["vapur rüzgar yüzünden iskeleye geç yanaştı",10,45]]},
+  dolmus:{label:"🚐 Dolmuş", now:"Şu an dolmuştayım.", causes:[
+    ["dolmuş dolana kadar kalkmadı",5,30],
+    ["dolmuş yolda bozuldu, başka bir araç beklemem gerekti",10,60],
+    ["dolmuş yanlış güzergaha saptı, geri dönmek zorunda kaldık",10,45],
+    ["dolmuş hattında yoğun trafik vardı",5,40]]},
+  yuruyerek:{label:"🚶 Yürüyerek", now:"Şu an yürüyorum.", causes:[
+    ["yoldaki çalışma yüzünden kaldırım kapalıydı, uzun yoldan dolaşmak zorunda kaldım",5,30],
+    ["yağmura yakalandım, bir süre sığınmak zorunda kaldım",5,30],
+    ["yanlış sokağa sapıp biraz kaybolmuştum",5,25],
+    ["ayakkabım ayağımı vurdu, yavaş yürümek zorunda kaldım",5,25],
+    ["yol üstünde bir tanıdığa denk geldim, hal hatır sormadan geçemedim",5,20]]}
+};
+
+// Patron / yönetici için profesyonel ve doğrulanabilir bahaneler
+const PRO = {
+  ulasim:[
+    ["sabah saatlerinde toplu taşıma hatlarında yoğunluk ve aksama yaşandı",10,60],
+    ["güzergahımdaki kaza nedeniyle yol bir süre kapandı",15,90],
+    ["trafik yoğunluğu planladığımdan çok daha uzun sürdü",5,40],
+    ["yol çalışması nedeniyle alternatif güzergaha yönlenmek zorunda kaldım",10,60],
+    ["köprü ve bağlantı yollarında beklenmedik bir yoğunluk vardı",5,40],
+    ["yağış nedeniyle trafik çok yavaş aktı",10,60],
+    ["metro hattındaki teknik arıza nedeniyle seferler aksadı",15,90]],
+  ev:[
+    ["evde acil bir su kaçağı çıktı, ustayı beklemem gerekti",30,120],
+    ["apartmanda asansör arızası yüzünden iniş uzadı",5,15],
+    ["elektrik kesintisi nedeniyle hazırlıklarım gecikti",10,45],
+    ["kapı kilidi arızası nedeniyle çilingir çağırmam gerekti",20,90],
+    ["bir aile üyemin acil bir işi için yardımcı olmam gerekti",15,90],
+    ["çıkarken gelen bir teslimat için imza atmam gerekti",5,20]],
+  saglik:[
+    ["ani bir rahatsızlık nedeniyle muayeneye uğramam gerekti",30,180],
+    ["sabah doktor randevum öngördüğümden uzun sürdü",20,120],
+    ["bir yakınımın acil bir sağlık işlemi için yanında olmam gerekti",30,180],
+    ["çocuğumun okuluyla ilgili acil bir durum çıktı",15,90],
+    ["ani bir baş ağrısı nedeniyle ilaç alıp kısa süre dinlenmem gerekti",10,45]],
+  teknoloji:[
+    ["VPN ve sistem erişim sorunları nedeniyle önceki işimi tamamlayamadım",10,60],
+    ["internet kesintisi nedeniyle sabah göndermem gereken dosya gecikti",10,45],
+    ["bir önceki online toplantı planlanandan uzun sürdü",5,40],
+    ["bilgisayar güncellemesi nedeniyle hazırlıkları tamamlayamadım",5,30],
+    ["şifre sıfırlama ve kimlik doğrulama sorunu nedeniyle sisteme geç girebildim",10,45]]
+};
+PRO.karisik=[].concat(PRO.ulasim,PRO.ev,PRO.saglik,PRO.teknoloji);
+const PROOF={ulasim:"İsterseniz duyuru veya trafik ekran görüntüsünü iletebilirim.",saglik:"Gerekirse belgesini iletebilirim.",teknoloji:"Gerekirse ekran görüntüsünü iletebilirim."};
+const PRO_OPEN=[
+  [10,["{n} dakika gecikmeyle katılacağım, çünkü","Kısa bir gecikmem olacak (yaklaşık {n} dk), çünkü","Önceden haber vermek istedim: {n} dakika geç kalacağım, çünkü"]],
+  [30,["Önceden bilgilendirmek isterim, yaklaşık {n} dakika gecikeceğim, çünkü","Yaklaşık {n} dakika geç katılacağım, çünkü","Maalesef planımızdan yaklaşık {n} dakika gecikeceğim, çünkü"]],
+  [60,["Bilgilendirmek isterim, yaklaşık {n} dakika gecikeceğim, çünkü","Beklenmedik bir durum nedeniyle {n} dakika kadar geç kalacağım, çünkü","Üzülerek bildiriyorum, {n} dakika geç kalacağım, çünkü"]],
+  [999,["Bilginize: yaklaşık {n} dakika geç kalacağım, çünkü","Ne yazık ki ciddi bir gecikmem var ({n} dk), çünkü","Önemli bir durum nedeniyle yaklaşık {n} dakika gecikmem olacak, çünkü"]]
+];
+const PRO_EFFECTS=["Gelişmeleri size ileteceğim.","Acil bir konu olursa telefonla ulaşabilirsiniz.","Mümkünse toplantıya çevrimiçi katılacağım.","Yoldayım, en kısa sürede orada olacağım."];
+const PRO_BYE=["Gün içinde telafi edeceğim.","Kaçırdığım kısmın notlarını almak isterim.","Anlayışınız için teşekkür ederim.","İşlerde aksama olmaması için gün sonuna kadar gerekli takibi yapacağım."];
+const FUN_EFFECTS=["Neyse ki herkes sağ salim.","Bunu ilerde belgesel yaparlar.","Detayları yüz yüze anlatırım, inanmayacaksınız.","Konuyla ilgili bir rapor hazırlıyorum."];
+const TIMES=[5,10,15,20,30,45,60,90,120,180];
+
+const OPEN = [
+  [10, ["{n} dakika geç kalacağım çünkü","Ufak bir gecikmem olacak ({n} dk) çünkü","Sadece {n} dakika geç kalıyorum çünkü"]],
+  [30, ["Yaklaşık {n} dakika gecikeceğim çünkü","Biraz geç kalacağım (~{n} dk) çünkü","Maalesef {n} dakika kadar geç kalacağım çünkü"]],
+  [60, ["Kusura bakmayın, {n} dakika geç kalacağım çünkü","Bugün epey gecikeceğim ({n} dk) çünkü","Gerçekten üzgünüm, {n} dakika kadar gecikmem var çünkü"]],
+  [999,["Uzun bir gecikme yaşıyorum ({n} dk) çünkü","Ne yazık ki {n} dakika geç kalacağım çünkü","Kusura bakmayın, {n} dakikalık ciddi bir gecikmem var çünkü"]]
+];
+
+
+// ===== English / İngilizce =====
+const mk=(tr,en)=>{ if(tr.length!==en.length) console.error("i18n length mismatch",tr.length,en.length); return tr.map((c,i)=>[en[i],c[1],c[2]]); };
+const I18N_ENC={"ulasim": ["the bus never showed up and I had to wait for the next one", "metro services were disrupted and the station was packed", "the metrobus broke down and we were stuck on the road for a while", "an accident on the road brought traffic to a near standstill", "there was unexpected congestion at the bridge entrance", "my ferry was cancelled and I had to wait for the next one", "it was raining and finding a taxi or shared minibus was really hard", "I got on the wrong bus and only noticed a few stops later", "road works closed my route and I had to take a long detour", "I got a flat tire and had to switch to the spare", "the car park was full and finding a spot took forever", "the fuel light came on and I had to stop at a gas station"], "ev": ["my phone alarm was on silent and I overslept", "the courier showed up just as I was leaving and the delivery took a while", "I realized I'd forgotten my keys after leaving and had to go back", "the elevator broke down and I had to take the stairs", "the boiler broke down and I had to wait for the repairman", "a water cut delayed my getting ready", "the power went out and I struggled to get ready", "my door lock jammed and I had to call a locksmith", "the washing machine overflowed and I had to clean it up first", "a neighbor asked for urgent help and I had to deal with it", "I spilled coffee on myself and had to change clothes"], "saglik": ["my kid's school bus didn't come and I had to drop them off at school", "my mom called and needed urgent help with something", "a relative fell ill and I had to take care of them", "I had a terrible headache and needed to take medicine and rest a bit", "my stomach acted up this morning and I needed to pull myself together before leaving", "I had to rush my pet to an emergency vet", "I had a toothache and stopped by for an urgent checkup", "my doctor's appointment ran long and pushed back my departure"], "teknoloji": ["my phone got stuck on the update screen and took ages to start", "the navigation sent me to the wrong address", "my previous online meeting ran over and I couldn't leave", "my computer started an update just as I was leaving and I couldn't save my work", "my phone ran out of battery and I had to go back to charge it", "my transit card didn't work and I had to top it up", "the internet went down and I had to download the presentation at the last minute", "the VPN wouldn't connect and getting into the office system took a long time"], "eglenceli": ["my cat lay down in front of the door and I couldn't bring myself to disturb it", "a seagull snatched my simit and I chased it for justice", "my shoes had a fight and I had to mediate", "one of my socks went missing and I couldn't leave without finding it", "a pigeon asked me for directions and explaining took ten minutes", "I noticed I'd left in mismatched socks and went back, the longest return trip of my life", "I ran into a familiar dog on the way and the greeting got out of hand", "the coffee machine said 'Error 404: coffee not found' and I can't leave without coffee", "my smartwatch said 'take a rest today' and wouldn't let me out the door", "I had a 'what should I wear today' crisis in front of my closet", "my neighbor's parrot invited me to a meeting and the agenda ran long", "the navigation sent me to my old house from 2014", "my teleporter said 'weak Wi-Fi signal'", "my robot vacuum gained consciousness and blocked the exit", "there was a small glitch in the timeline and I spent 17 minutes in another universe", "a time traveler told me 'don't leave now', so I listened"]};
+const ENC={}; for(const k in I18N_ENC){ ENC[k]=mk(CAT[k],I18N_ENC[k]); }
+const EN_STYLES={
+  karisik:{label:"🎲 Mixed",base:STYLES.karisik.base,causes:[].concat(ENC.ulasim,ENC.ev,ENC.saglik,ENC.teknoloji)},
+  ulasim:{label:"🚌 Transport / Traffic",base:STYLES.ulasim.base,causes:ENC.ulasim},
+  ev:{label:"🏠 Home / Daily life",base:STYLES.ev.base,causes:ENC.ev},
+  saglik:{label:"🩺 Health / Family",base:STYLES.saglik.base,causes:ENC.saglik},
+  teknoloji:{label:"📱 Technology",base:STYLES.teknoloji.base,causes:ENC.teknoloji},
+  eglenceli:{label:"🤪 Funny",base:STYLES.eglenceli.base,causes:ENC.eglenceli}
+};
+const VEN={"metrobus": ["🚍 Metrobus", "I'm on the metrobus right now.", ["the metrobus broke down and we were stuck for a while", "the queue at the metrobus stop was huge and I couldn't get on the first two buses", "a broken-down vehicle blocked the metrobus lane", "metrobus services were disrupted and the stop was packed", "I got on a metrobus going the wrong way and noticed a few stops later", "an accident on the metrobus line halted services for a while"]], "taksi": ["🚕 Taxi", "I'm in a taxi right now.", ["I called a taxi but it never came, so I cancelled and called another", "the taxi driver took a wrong turn and we had to go back", "it was raining and finding an empty taxi was really hard", "the taxi was stuck in traffic for a long time", "the taxi's card machine didn't work and we had to stop to get cash", "the taxi I called went to the wrong address and finding it took time"]], "araba": ["🚗 Car", "I'm in the car right now.", ["an accident on the road brought traffic to a near standstill", "I got a flat tire and had to switch to the spare", "the car park was full and finding a spot took forever", "the fuel light came on and I had to stop at a gas station", "my car wouldn't start the first time, the battery was weak", "there was unexpected congestion at the bridge entrance", "road works closed my route and I had to take a long detour", "my car windows were fogged up and clearing them took a while"]], "otobus": ["🚌 Bus", "I'm on the bus right now.", ["the bus never showed up and I had to wait for the next one", "the bus broke down on the way and we had to wait for another", "the bus was so packed that I missed the first one", "I got on the wrong bus and only noticed a few stops later", "heavy traffic made the bus wait a long time at every stop"]], "metro": ["🚇 Metro", "I'm on the metro right now.", ["metro services were disrupted and the station was packed", "a technical fault was announced at the station and services stopped for a while", "I got on the wrong line while transferring", "the metro waited in the tunnel for a while", "the station turnstiles weren't working and a long queue formed"]], "vapur": ["⛴️ Ferry", "I'm on the ferry right now.", ["my ferry was cancelled and I had to wait for the next one", "heavy fog delayed the ferries", "the pier was so crowded that I couldn't board the first ferry", "the ferry docked late because of the wind"]], "dolmus": ["🚐 Shared minibus", "I'm in a shared minibus right now.", ["the shared minibus wouldn't leave until it was full", "the minibus broke down on the way and I had to wait for another vehicle", "the minibus took the wrong route and we had to turn back", "there was heavy traffic on the minibus route"]], "yuruyerek": ["🚶 On foot", "I'm walking right now.", ["road works closed the sidewalk and I had to take a long detour", "I got caught in the rain and had to shelter for a while", "I turned onto the wrong street and got a bit lost", "my shoe was rubbing my foot and I had to walk slowly", "I bumped into an acquaintance on the way and couldn't walk past without catching up"]]};
+const EN_VEH={}; for(const k in VEN){ EN_VEH[k]={label:VEN[k][0],now:VEN[k][1],causes:mk(VEH[k].causes,VEN[k][2])}; }
+const PROEN={"ulasim": ["public transport lines were disrupted and crowded this morning", "the road along my route was closed for a while due to an accident", "traffic took much longer than I had planned", "road works forced me to take an alternative route", "there was unexpected congestion on the bridge and connecting roads", "traffic was crawling because of the rain", "services were disrupted by a technical fault on the metro line"], "ev": ["an urgent water leak came up at home and I had to wait for the plumber", "the elevator in my building broke down, which slowed my departure", "a power outage delayed my preparations", "a faulty door lock meant I had to call a locksmith", "a family member needed my help with something urgent", "I had to sign for a delivery just as I was leaving"], "saglik": ["a sudden illness meant I had to stop by for a check-up", "my doctor's appointment this morning took longer than expected", "I had to be with a relative during an urgent medical procedure", "an urgent situation came up at my child's school", "a sudden headache meant I had to take medication and rest briefly"], "teknoloji": ["VPN and system access problems kept me from finishing my previous task", "an internet outage delayed a file I had to send this morning", "my previous online meeting ran longer than planned", "a computer update kept me from finishing my preparations", "a password reset and authentication issue delayed my login to the system"]};
+const EN_PRO={}; for(const k in PROEN){ EN_PRO[k]=mk(PRO[k],PROEN[k]); }
+EN_PRO.karisik=[].concat(EN_PRO.ulasim,EN_PRO.ev,EN_PRO.saglik,EN_PRO.teknoloji);
+const EN_PERSONS={
+  patron:{label:"👔 Boss / Manager (formal)",hi:["Good morning,","Hello,","Hi,"],bye:["I'll make up for it during the day.","I'd appreciate it if you could share the meeting notes.","Thank you for your understanding."]},
+  ekip:{label:"💼 Teammate",hi:["Hi team,","Hello,","Hey,"],bye:["Start without me, I'll join shortly.","Message me if anything important comes up.","Leave the note-taking to me, I'll handle it."]},
+  musteri:{label:"🤝 Client / External meeting",hi:["Hello,","Good day,","Hi,"],bye:["Thank you for your understanding.","I apologize for the delay.","I'll join the meeting as soon as I can."]},
+  hoca:{label:"🎓 Teacher / Professor",hi:["Hello professor,","Professor, I'm so sorry,","Dear professor,"],bye:["I'm sorry to miss the start of the class.","I'll definitely catch up on what I missed.","I wanted to let you know before arriving."]},
+  arkadas:{label:"🧑‍🤝‍🧑 Friend (casual)",hi:["Hey,","Dude,","Mate,"],bye:["Start without me, I'm coming!","First tea's on me.","Don't wait for me, I'm on my way."]},
+  sevgili:{label:"💘 Partner",hi:["Honey,","Babe,","Sweetheart,"],bye:["Sorry, I'll explain when I get there.","I'll make it up to you with a nice dinner.","Do you need anything on my way?"]},
+  aile:{label:"🏠 Family",hi:["Mom,","Dad,","Hey everyone,"],bye:["Don't worry, I'm on my way.","Save me some food.","I'll text you again when I leave."]}
+};
+const EN_OPEN=[
+  [10,["I'll be {n} minutes late because","I'll have a small delay ({n} min) because","I'm only {n} minutes late because"]],
+  [30,["I'll be about {n} minutes late because","I'll be a bit late (~{n} min) because","Unfortunately I'll be about {n} minutes late because"]],
+  [60,["Sorry, I'll be {n} minutes late because","I'll be quite late today ({n} min) because","I'm really sorry, I'm running about {n} minutes behind because"]],
+  [999,["I'm facing a long delay ({n} min) because","Sadly I'll be {n} minutes late because","Sorry, I have a serious {n}-minute delay because"]]
+];
+const EN_PRO_OPEN=[
+  [10,["I'll be joining {n} minutes late because","I'll have a short delay (about {n} min) because","Just a heads-up: I'll be {n} minutes late because"]],
+  [30,["I'd like to let you know I'll be about {n} minutes late because","I'll join about {n} minutes late because","Unfortunately I'll be about {n} minutes behind schedule because"]],
+  [60,["I wanted to let you know I'll be about {n} minutes late because","Due to an unexpected situation I'll be around {n} minutes late because","I regret to inform you that I'll be {n} minutes late because"]],
+  [999,["For your information: I'll be about {n} minutes late because","Unfortunately I have a serious delay ({n} min) because","Due to an important situation I'll be about {n} minutes late because"]]
+];
+const EN_CASUAL={
+  hi:["Hey,","Dude,","Yo,","What's up,"],
+  bye:["Start without me, I'm coming!","First tea's on me, promise.","Sorry man, I'm on my way.","Save me a seat, I'm coming 😅"],
+  effects:["I'm on my way, coming!","Doing my best, almost there.","You guys start, I'll catch up.","Don't wait for me, I'll be there in no time."],
+  open:[
+    [10,["Hey, I'm {n} min late because","I'll be {n} minutes late man, because","Not much, I'll be {n} min late because"]],
+    [30,["Hey, I'll be {n} minutes late because","Honestly I'll be {n} min late because","A little thing came up, I'll be {n} min late because"]],
+    [60,["It went badly but I'll be {n} minutes late because","Ugh, I'll be {n} min late because","Sorry, I'm {n} min late because"]],
+    [999,["Ugh, disaster, I'll be {n} minutes late because","This time I'll be {n} min late honestly, because","So sorry, I'm {n} minutes behind because"]]
+  ],
+  words:[["unexpected ","crazy "],["was really hard","was a nightmare"]]
+};
+const DATA={
+  tr:{PERSONS,STYLES,VEH,PRO,PROOF,PRO_OPEN,PRO_EFFECTS,PRO_BYE,CASUAL,OPEN,EFFECTS,FUN_EFFECTS},
+  en:{PERSONS:EN_PERSONS,STYLES:EN_STYLES,VEH:EN_VEH,PRO:EN_PRO,
+    PROOF:{ulasim:"If you like, I can send the announcement or a traffic screenshot.",saglik:"I can send documentation if needed.",teknoloji:"I can send a screenshot if needed."},
+    PRO_OPEN:EN_PRO_OPEN,
+    PRO_EFFECTS:["I'll keep you updated.","You can reach me by phone if anything urgent comes up.","I'll join the meeting online if possible.","I'm on my way and will be there as soon as I can."],
+    PRO_BYE:["I'll make up for it during the day.","I'd appreciate the notes from the part I missed.","Thank you for your understanding.","I'll follow up as needed by end of day so nothing is disrupted."],
+    CASUAL:EN_CASUAL,OPEN:EN_OPEN,
+    EFFECTS:["I'm on my way.","I'm doing my best, almost there.","I'm keeping track of the situation and will update you.","Feel free to start without me."],
+    FUN_EFFECTS:["Luckily everyone is safe and sound.","They'll make a documentary about this one day.","I'll tell you the details in person, you won't believe it.","I'm preparing a report on the matter."]}
+};
+const UI={
+  tr:{title:"Geç Kaldım Makinesi",sub:"Yüzde yüz uydurma, yüzde yüz eğlence. Kimseye ciddiye aldırmayın. 😄",
+    lblPerson:"👤 Kime anlatacaksın?",lblStyle:"🎯 Bahane tarzı",lblVeh:"🚦 Ne ile geliyorsun?",lblMin:"⏱️ Ne kadar geç kaldın?",
+    go:'🎲 Bahane Üret <small style="font-weight:400;opacity:.8">(Boşluk tuşu)</small>',resultH:"Bahanen",meter:"İnandırıcılık",
+    copy:"📋 Kopyala",share:"📤 Paylaş",fav:"🤍 Favorile",favOn:"💖 Favoride",tabHist:"🕘 Geçmiş",tabFav:"💖 Favoriler",
+    footer:"Bu site tamamen şaka amaçlıdır. Gerçek hayatta dürüst olmak en iyisi (ama bazen de bu iş görür 😉).",
+    placeholder:"Yukarıdan ayarlarını seç ve butona bas. Mükemmel bahane seni bekliyor…",
+    stats:n=>`Şimdiye kadar toplam ${n} bahane ürettin. Bu da kendi başına bir rekor sayılır.`,
+    emptyH:"Henüz bahane üretmedin.",emptyF:"Henüz favorin yok. Kalbe bas!",
+    tCopied:"Kopyalandı! 📋",tCopyFail:"Kopyalanamadı :(",tFavAdd:"Favorilere eklendi 💖",tFavDel:"Favoriden çıkarıldı",tShareCopied:"Paylaşım yok, kopyalandı 📋",
+    verdicts:["✅ Demir gibi. Yutarlar.","🙂 İdare eder, ses tonuna dikkat.","😬 Riskli. Biraz da mimik lazım.","🤨 Kaşlar kalkacak ama en azından eğlenceli.","🚀 Güvenilirlik sıfır, yaratıcılık tavan!"],
+    err:"Bir sorun çıktı, tekrar dene.",any:"🎲 Fark etmez",minUnit:"dakika",hourUnit:"saat",theme:"Tema",langBtn:"EN",langTitle:"English"},
+  en:{title:"Running Late Machine",sub:"100% made up, 100% fun. Please don't take it seriously. 😄",
+    lblPerson:"👤 Who are you telling?",lblStyle:"🎯 Excuse style",lblVeh:"🚦 How are you getting there?",lblMin:"⏱️ How late are you?",
+    go:'🎲 Generate Excuse <small style="font-weight:400;opacity:.8">(Space key)</small>',resultH:"Your excuse",meter:"Believability",
+    copy:"📋 Copy",share:"📤 Share",fav:"🤍 Favorite",favOn:"💖 Favorited",tabHist:"🕘 History",tabFav:"💖 Favorites",
+    footer:"This site is purely for fun. In real life honesty is best (but sometimes this does the job 😉).",
+    placeholder:"Pick your settings above and hit the button. The perfect excuse is waiting for you…",
+    stats:n=>`You've generated ${n} excuses so far. That counts as a record in itself.`,
+    emptyH:"You haven't generated any excuses yet.",emptyF:"No favorites yet. Tap the heart!",
+    tCopied:"Copied! 📋",tCopyFail:"Couldn't copy :(",tFavAdd:"Added to favorites 💖",tFavDel:"Removed from favorites",tShareCopied:"Sharing not available, copied instead 📋",
+    verdicts:["✅ Rock solid. They'll buy it.","🙂 Passable, watch your tone.","😬 Risky. Add some facial acting.","🤨 Eyebrows will rise, but at least it's fun.","🚀 Zero credibility, maximum creativity!"],
+    err:"Something went wrong, try again.",any:"🎲 Doesn't matter",minUnit:"minutes",hourUnit:"h",theme:"Theme",langBtn:"TR",langTitle:"Türkçe"}
+};
+let LANG="tr";
+try{ const sv=localStorage.getItem("gk_lang"); if(sv==="en"||sv==="tr") LANG=sv; }catch(e){}
+const U=()=>UI[LANG];
+
+function buildLists(){
+  const D=DATA[LANG], T=UI[LANG];
+  const keep={p:$("#person").value, s:$("#style").value, v:$("#vehicle").value, m:$("#min").value||"15"};
+  ["#person","#style","#vehicle","#min"].forEach(i=>{$(i).innerHTML=""});
+  fillSelect($("#person"),D.PERSONS); fillSelect($("#style"),D.STYLES);
+  {const o=document.createElement("option");o.value="";o.textContent=T.any;$("#vehicle").appendChild(o);}
+  fillSelect($("#vehicle"),D.VEH);
+  TIMES.forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t+" "+T.minUnit+(t>=60?" ("+(t/60)+" "+T.hourUnit+")":"");$("#min").appendChild(o)});
+  if(keep.p) $("#person").value=keep.p;
+  if(keep.s) $("#style").value=keep.s;
+  $("#vehicle").value=keep.v;
+  $("#min").value=keep.m;
+}
+const LBL={lblPerson:"#lblPerson"};
+function applyLang(){
+  const T=UI[LANG];
+  document.documentElement.lang=LANG;
+  document.title=T.title;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ el.innerHTML=T[el.dataset.i18n]; });
+  buildLists();
+  $("#theme").title=T.theme;
+  $("#lang").textContent=T.langBtn; $("#lang").title=T.langTitle;
+  if(!state.current && runId===0) $("#bubble").textContent=T.placeholder;
+  updateFav(); renderList(); renderStats();
+}
+
+const state = {person:"patron", style:"gercekci", current:null, tab:"history"};
+let history = [], favs = [], count = 0;
+try{
+  history = JSON.parse(localStorage.getItem("gk_hist")||"[]");
+  favs = JSON.parse(localStorage.getItem("gk_favs")||"[]");
+  count = +localStorage.getItem("gk_count")||0;
+  if(localStorage.getItem("gk_dark")==="1") document.body.classList.add("dark");
+}catch(e){}
+function save(){try{
+  localStorage.setItem("gk_hist",JSON.stringify(history.slice(0,100)));
+  localStorage.setItem("gk_favs",JSON.stringify(favs));
+  localStorage.setItem("gk_count",count);
+}catch(e){}}
+
+// UI build
+function fillSelect(el,obj){for(const k in obj){const o=document.createElement("option");o.value=k;o.textContent=obj[k].label;el.appendChild(o)}}
+
+
+function make(){
+  const {PERSONS,STYLES,VEH,PRO,PROOF,PRO_OPEN,PRO_EFFECTS,PRO_BYE,CASUAL,OPEN,EFFECTS,FUN_EFFECTS}=DATA[LANG];
+  const n=+$("#min").value, pk=$("#person").value, sk=$("#style").value;
+  const p=PERSONS[pk], s=STYLES[sk], friend=(pk==="arkadas"), boss=(pk==="patron");
+  const base=(boss && PRO[sk]) ? PRO[sk] : s.causes;
+  let pool=base.filter(c=>n>=c[1]&&n<=c[2]);
+  if(!pool.length) pool=base;
+  const tier=(friend?CASUAL.open:(boss?PRO_OPEN:OPEN)).find(t=>n<=t[0])[1];
+  const open=pick(tier).split("{n}").join(n);
+  const V=VEH[$("#vehicle").value];
+  let cause, fromV=false;
+  if(V){
+    const vp=V.causes.filter(c=>n>=c[1]&&n<=c[2]);
+    const vpool=vp.length?vp:V.causes;
+    fromV=(sk==="ulasim"||Math.random()<0.5);
+    cause=pick(fromV?vpool:pool)[0];
+  } else cause=pick(pool)[0];
+  if(friend) CASUAL.words.forEach(w=>{cause=cause.split(w[0]).join(w[1])});
+  const hi=pick(friend?CASUAL.hi:p.hi), fx=pick(sk==="eglenceli"?FUN_EFFECTS:(friend?CASUAL.effects:(boss?PRO_EFFECTS:EFFECTS))), bye=pick(friend?CASUAL.bye:(boss?PRO_BYE:p.bye));
+  const fx2=(V && sk!=="eglenceli" && Math.random()<0.6) ? V.now : fx;
+  const pk2=fromV?"ulasim":sk;
+  const proof=(boss && sk!=="eglenceli" && PROOF[pk2] && Math.random()<0.5) ? " "+PROOF[pk2] : "";
+  const text=`${hi} ${open} ${cause}. ${fx2}${proof} ${bye}`;
+  let score=s.base - n/10 + (Math.random()*10-5);
+  if(boss && sk!=="eglenceli") score+=4;
+  score=Math.max(40,Math.min(98,Math.round(score)));
+  return {text,score,style:sk,person:pk,n};
+}
+
+function verdict(sc){
+  const V=U().verdicts;
+  if(sc>=80) return [V[0],"#16a34a"];
+  if(sc>=55) return [V[1],"#84cc16"];
+  if(sc>=30) return [V[2],"#f59e0b"];
+  if(sc>=12) return [V[3],"#f97316"];
+  return [V[4],"#ef4444"];
+}
+
+let runId=0;
+function makeFresh(){
+  // aynı bahaneyi arka arkaya vermemek için en fazla 12 kez yeniden dener
+  let r=make();
+  for(let i=0;i<12 && history.some(h=>h.text===r.text);i++) r=make();
+  return r;
+}
+async function generate(){
+  const id=++runId;               // yeni tık, önceki animasyonu iptal eder; hiçbir zaman engellenmez
+  const b=$("#bubble");
+  try{
+    const r=makeFresh();
+    $("#meter").hidden=true; $("#actions").hidden=true;
+    b.classList.remove("pop"); b.classList.add("spin");
+    const flash=Object.values(DATA[LANG].STYLES).flatMap(s=>s.causes.map(c=>c[0]));
+    for(let i=0;i<9;i++){ if(id!==runId) return; b.textContent="… "+pick(flash)+" …"; await sleep(80); }
+    b.classList.remove("spin"); b.textContent="";
+    b.classList.add("cursor");
+    for(let i=0;i<=r.text.length;i++){
+      if(id!==runId) return;
+      b.textContent=r.text.slice(0,i);
+      if(i%3===0) await sleep(12);
+    }
+    if(id!==runId) return;
+    b.classList.remove("cursor"); b.classList.add("pop");
+    state.current=r;
+    const [v,c]=verdict(r.score);
+    $("#meter").hidden=false; $("#actions").hidden=false;
+    $("#fill").style.width="0%"; $("#fill").style.background=c;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ $("#fill").style.width=r.score+"%"; }));
+    countUp($("#pct"), r.score);
+    $("#verdict").textContent=v; $("#verdict").style.color=c;
+    updateFav();
+    history.unshift({text:r.text,score:r.score}); history=history.slice(0,100);
+    count++; save(); renderList(); renderStats();
+    if(r.score>=92) confetti();
+  }catch(e){
+    console.error(e);
+    b.classList.remove("spin","cursor");
+    b.textContent=U().err+" ("+e.message+")";
+  }
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function countUp(el,to){
+  let v=0; const t=setInterval(()=>{v+=Math.max(1,Math.round(to/25)); if(v>=to){v=to;clearInterval(t)} el.textContent=v+"%"},30);
+}
+
+function toast(m){const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800)}
+function updateFav(){
+  const on=state.current && favs.includes(state.current.text);
+  $("#fav").classList.toggle("on",!!on); $("#fav").textContent=on?U().favOn:U().fav;
+}
+
+$("#go").onclick=generate;
+$("#copy").onclick=async()=>{ try{await navigator.clipboard.writeText(state.current.text); toast(U().tCopied)}catch(e){toast(U().tCopyFail)} };
+$("#fav").onclick=()=>{
+  const t=state.current.text;
+  favs = favs.includes(t) ? favs.filter(x=>x!==t) : [t,...favs];
+  save(); updateFav(); renderList();
+  toast(favs.includes(t)?U().tFavAdd:U().tFavDel);
+};
+$("#share").onclick=async()=>{
+  const t=state.current.text;
+  if(navigator.share){ try{await navigator.share({text:t})}catch(e){} }
+  else { try{await navigator.clipboard.writeText(t); toast(U().tShareCopied)}catch(e){} }
+};
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{
+  state.tab=b.dataset.tab;
+  document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("on",x===b));
+  renderList();
+});
+function renderList(){
+  const L=$("#list"); L.innerHTML="";
+  const items = state.tab==="history" ? history.map(h=>h.text) : favs;
+  if(!items.length){ L.innerHTML='<div class="empty">'+(state.tab==="history"?U().emptyH:U().emptyF)+'</div>'; return; }
+  items.forEach(t=>{
+    const d=document.createElement("div"); d.className="item";
+    d.innerHTML='<span class="t"></span><button title="Kopyala">📋</button>';
+    d.querySelector(".t").textContent=t;
+    d.querySelector("button").onclick=async()=>{try{await navigator.clipboard.writeText(t); toast(U().tCopied)}catch(e){}};
+    L.appendChild(d);
+  });
+}
+function renderStats(){ $("#stats").textContent=U().stats(count); }
+
+$("#theme").onclick=()=>{
+  document.body.classList.toggle("dark");
+  const d=document.body.classList.contains("dark");
+  $("#theme").textContent=d?"☀️":"🌙";
+  try{localStorage.setItem("gk_dark",d?"1":"0")}catch(e){}
+};
+$("#theme").textContent=document.body.classList.contains("dark")?"☀️":"🌙";
+document.addEventListener("keydown",e=>{
+  if(e.code==="Space" && !["INPUT","BUTTON","SELECT"].includes(document.activeElement.tagName)){ e.preventDefault(); generate(); }
+});
+
+// floating emojis
+["⏰","🚌","☕","🚇","🚗","📱","🌧️","🥐"].forEach((e,i)=>{
+  const s=document.createElement("div"); s.className="float"; s.textContent=e;
+  s.style.left=(i*13+3)+"%"; s.style.animationDelay=(-i*1.8)+"s"; s.style.animationDuration=(12+i*2)+"s";
+  document.body.appendChild(s);
+});
+
+// confetti
+const cv=$("#confetti"), cx=cv.getContext("2d");
+function resize(){cv.width=innerWidth; cv.height=innerHeight} resize(); addEventListener("resize",resize);
+function confetti(){
+  const ps=Array.from({length:120},()=>({x:innerWidth/2,y:innerHeight/2,vx:(Math.random()-.5)*16,vy:Math.random()*-14-3,
+    c:`hsl(${Math.random()*360},90%,60%)`,s:Math.random()*8+4,r:Math.random()*6}));
+  let f=0;
+  (function step(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{p.vy+=.35;p.x+=p.vx;p.y+=p.vy;p.r+=.2; cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.fillStyle=p.c;cx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);cx.restore()});
+    if(++f<110) requestAnimationFrame(step); else cx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+$("#lang").onclick=()=>{
+  LANG = LANG==="tr" ? "en" : "tr";
+  try{localStorage.setItem("gk_lang",LANG)}catch(e){}
+  applyLang();
+};
+applyLang();
+</script>
+</body>
+</html>
